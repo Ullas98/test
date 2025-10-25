@@ -10,70 +10,64 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg:#0b1220;
-      --glass:rgba(15,23,42,.55);
-      --text:#e6f0ff;
-      --muted:#9db2d7;
+      --bg:#000;               /* pure black background */
+      --glass:rgba(20,20,22,.55);
+      --text:#f5f7fa;
+      --muted:#b8c0d0;
+      --border:#ffffff16;
+      --accent:#7c3aed;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{margin:0; font-family:Poppins,system-ui,sans-serif; color:var(--text); background:var(--bg); overflow:hidden;}
-
-    /* background layers */
-    video.video-bg{
-      position:fixed; inset:0; width:100%; height:100%;
-      object-fit:cover; filter:brightness(.6) saturate(1.1) blur(8px);
-      z-index:-3;
+    body{
+      margin:0; font-family:Poppins,system-ui,sans-serif; color:var(--text);
+      background:var(--bg);
+      overflow:hidden;
+      cursor:none; /* hide default cursor */
     }
-    canvas#bg{position:fixed; inset:0; width:100%; height:100%; display:block; z-index:-2;}
-    .fog{
-      position:fixed; inset:-40%; z-index:-1; filter: blur(60px) opacity(.65);
-      background:
-        radial-gradient(40% 30% at 20% 20%, #00d4ff22, transparent 60%),
-        radial-gradient(50% 40% at 80% 30%, #7c3aed22, transparent 65%),
-        radial-gradient(60% 50% at 50% 80%, #10b98122, transparent 70%);
-      animation:fogMove 22s infinite alternate ease-in-out;
-    }
-    @keyframes fogMove{from{transform:translate(-2%,1%) scale(1.05)}to{transform:translate(2%,-1%) scale(1.1)}}
 
-    /* layout */
+    /* CANVAS particle field */
+    canvas#bg{position:fixed; inset:0; width:100%; height:100%; display:block; z-index:-1;}
+
+    /* Layout */
     .wrap{display:grid; place-items:center; height:100%; padding:32px}
     .card{
       width:min(680px, 92vw); padding:28px 26px 22px;
-      background:var(--glass); border:1px solid #ffffff12; border-radius:24px;
-      box-shadow:0 10px 40px rgba(0,0,0,.35); backdrop-filter:blur(10px);
+      background:var(--glass); border:1px solid var(--border); border-radius:24px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.6), 0 0 0 1px #000 inset;
+      backdrop-filter: blur(10px) saturate(110%);
     }
     h1{margin:0 0 6px; font-size:clamp(28px, 4vw, 38px)}
     .links{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:14px; margin-top:18px}
     .btn{
       display:flex; align-items:center; justify-content:center; gap:10px;
       padding:14px 16px; border-radius:16px; text-decoration:none; color:var(--text);
-      background:linear-gradient(180deg, #0f172acc, #0b1220cc); border:1px solid #ffffff1a;
+      background:linear-gradient(180deg, #141418, #0a0a0d); border:1px solid var(--border);
       transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease;
     }
-    .btn:hover{transform:translateY(-2px); box-shadow:0 12px 28px rgba(0,0,0,.35); border-color:#7c3aed55}
+    .btn:hover{transform:translateY(-2px); box-shadow:0 12px 28px rgba(0,0,0,.65); border-color:#7c3aed55}
     .foot{display:flex; align-items:center; justify-content:space-between; margin-top:14px; font-size:12px; color:var(--muted)}
+
+    /* Custom cursor: small white dot */
+    .cursor{
+      position:fixed; left:0; top:0; width:10px; height:10px; border-radius:50%;
+      background:#fff; pointer-events:none; z-index:9999; translate:-50% -50%;
+      box-shadow:0 0 16px #ffffff80;
+    }
+    .cursor.hide{opacity:0}
   </style>
 </head>
 <body>
-  <!-- place bg.mp4 next to this file -->
-  <video class="video-bg" src="bg.mp4" autoplay muted loop playsinline></video>
   <canvas id="bg" aria-hidden="true"></canvas>
-  <div class="fog" aria-hidden="true"></div>
+  <div class="cursor" id="cursor"></div>
 
   <main class="wrap">
     <section class="card" aria-label="Profile">
       <h1>ItzDevilDanny</h1>
 
       <div class="links" role="list">
-        <!-- Discord server invite -->
-        <a class="btn" href="https://discord.gg/vocaltools" target="_blank" rel="noopener" role="listitem">
-          Join our Discord
-        </a>
-        <!-- Sellauth shop -->
-        <a class="btn" href="https://devildanny.mysellauth.com/" target="_blank" rel="noopener" role="listitem">
-          Sellauth
-        </a>
+        <a class="btn" href="https://discord.gg/vocaltools" target="_blank" rel="noopener" role="listitem">Join our Discord</a>
+        <a class="btn" href="https://devildanny.mysellauth.com/" target="_blank" rel="noopener" role="listitem">Sellauth</a>
       </div>
 
       <div class="foot">
@@ -83,29 +77,109 @@
   </main>
 
   <script>
-    // Ambient starfield background
-    const c = document.getElementById('bg'), x = c.getContext('2d');
-    let dpr, W, H, S=[]; const N=240;
-    function R(a,b){return Math.random()*(b-a)+a}
+    // ===== Custom cursor (white dot) =====
+    const cursor = document.getElementById('cursor');
+    let cx = innerWidth/2, cy = innerHeight/2; // rendered position
+    let tx = cx, ty = cy; // target position
+    const ease = 0.18; // smoothing
+
+    function onMove(e){
+      const p = e.touches ? e.touches[0] : e;
+      tx = p.clientX; ty = p.clientY;
+      cursor.classList.remove('hide');
+    }
+    addEventListener('mousemove', onMove, {passive:true});
+    addEventListener('touchmove', onMove, {passive:true});
+    addEventListener('mouseleave',()=>cursor.classList.add('hide'));
+
+    function cursorLoop(){
+      cx += (tx - cx)*ease; cy += (ty - cy)*ease;
+      cursor.style.transform = `translate(${cx}px, ${cy}px)`;
+      requestAnimationFrame(cursorLoop);
+    }
+    cursorLoop();
+
+    // ===== Interactive particle background =====
+    const c = document.getElementById('bg');
+    const ctx = c.getContext('2d');
+    let w, h, dpr, P = [];
+    const COUNT = 220;         // number of dots
+    const BASE_SPEED = 0.35;   // drift speed
+    const FORCE = 1100;        // mouse attraction strength (higher = stronger)
+    const MAX_DIST = 160;      // max influence distance
+
+    function rand(a,b){return Math.random()*(b-a)+a}
+
     function resize(){
-      dpr=Math.min(devicePixelRatio||1,2);
-      W=c.width=Math.floor(innerWidth*dpr);
-      H=c.height=Math.floor(innerHeight*dpr);
-      c.style.width=innerWidth+'px'; c.style.height=innerHeight+'px';
-      x.setTransform(1,0,0,1,0,0); x.scale(dpr,dpr);
+      dpr = Math.min(devicePixelRatio||1,2);
+      w = c.width = Math.floor(innerWidth * dpr);
+      h = c.height = Math.floor(innerHeight * dpr);
+      c.style.width = innerWidth + 'px';
+      c.style.height = innerHeight + 'px';
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.scale(dpr, dpr);
     }
-    function make(){return {x:R(0,innerWidth), y:R(0,innerHeight), z:R(.2,1.2), r:R(.4,1.8), vx:R(-.08,.08), vy:R(.02,.18)}}
-    function init(){resize(); S=Array.from({length:N}, make); requestAnimationFrame(loop)}
-    function loop(){
-      const g=x.createLinearGradient(0,0,0,innerHeight); g.addColorStop(0,'#081020'); g.addColorStop(1,'#0b132b');
-      x.fillStyle=g; x.fillRect(0,0,innerWidth,innerHeight); x.globalCompositeOperation='lighter'; x.fillStyle='#a2d9ff';
-      for(const s of S){ x.globalAlpha=.35+s.z*.35; x.beginPath(); x.arc(s.x,s.y,s.r+s.z*.7,0,Math.PI*2); x.fill();
-        s.x+=s.vx*(1+s.z*1.5); s.y+=s.vy*(1+s.z*1.5);
-        if(s.x<-5||s.x>innerWidth+5||s.y>innerHeight+5){ s.x=R(0,innerWidth); s.y=-5; s.z=R(.2,1.2); s.r=R(.4,1.8); }
+
+    function makeDot(){
+      return {
+        x: rand(0, innerWidth),
+        y: rand(0, innerHeight),
+        vx: rand(-BASE_SPEED, BASE_SPEED),
+        vy: rand(-BASE_SPEED, BASE_SPEED),
+        r: rand(0.6, 1.8)
       }
-      x.globalCompositeOperation='source-over'; requestAnimationFrame(loop);
     }
-    addEventListener('resize', resize); init();
+
+    function init(){
+      resize();
+      P = Array.from({length: COUNT}, makeDot);
+      requestAnimationFrame(loop);
+    }
+
+    function loop(){
+      ctx.clearRect(0,0,innerWidth,innerHeight);
+      // subtle vignette to soften edges
+      const g = ctx.createRadialGradient(innerWidth/2, innerHeight/2, 0, innerWidth/2, innerHeight/2, Math.max(innerWidth, innerHeight));
+      g.addColorStop(0,'#000');
+      g.addColorStop(1,'#050505');
+      ctx.fillStyle = g; ctx.fillRect(0,0,innerWidth,innerHeight);
+
+      // mouse parallax force
+      for(const p of P){
+        const dx = tx - p.x, dy = ty - p.y;
+        const d2 = dx*dx + dy*dy;
+        if(d2 < MAX_DIST*MAX_DIST){
+          const f = FORCE / (d2 + 80); // avoid infinity near zero
+          p.vx += dx * f * 0.016;
+          p.vy += dy * f * 0.016;
+        }
+        // friction & speed clamp
+        p.vx *= 0.96; p.vy *= 0.96;
+        const sp = Math.hypot(p.vx, p.vy);
+        const cap = 2.2;
+        if(sp > cap){ p.vx = p.vx/sp*cap; p.vy = p.vy/sp*cap; }
+
+        p.x += p.vx; p.y += p.vy;
+        // wrap around edges
+        if(p.x < -5) p.x = innerWidth+5; if(p.x > innerWidth+5) p.x = -5;
+        if(p.y < -5) p.y = innerHeight+5; if(p.y > innerHeight+5) p.y = -5;
+      }
+
+      // draw dots
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = '#e8f1ff';
+      for(const p of P){
+        ctx.globalAlpha = 0.25 + (Math.abs(p.vx)+Math.abs(p.vy))*0.08;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      requestAnimationFrame(loop);
+    }
+
+    addEventListener('resize', resize);
+    init();
+
+    // dynamic year
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
 </body>
