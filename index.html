@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>vocaltools — links</title>
-  <meta name="description" content="vocaltools links" />
+  <title>ItzDevilDanny — links</title>
+  <meta name="description" content="links" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -17,10 +17,7 @@
     }
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{
-      margin:0; font-family:Poppins,system-ui,sans-serif;
-      color:var(--text); background:var(--bg); overflow:hidden;
-    }
+    body{margin:0; font-family:Poppins,system-ui,sans-serif; color:var(--text); background:var(--bg); overflow:hidden;}
 
     /* background layers */
     video.video-bg{
@@ -66,25 +63,27 @@
 
   <main class="wrap">
     <section class="card" aria-label="Profile">
-      <h1>vocaltools</h1>
+      <h1>ItzDevilDanny</h1>
 
       <div class="links" role="list">
+        <!-- Discord server invite -->
         <a class="btn" href="https://discord.gg/vocaltools" target="_blank" rel="noopener" role="listitem">
           Join our Discord
         </a>
-        <a class="btn" href="https://vocaltools.shop" target="_blank" rel="noopener" role="listitem">
-          Visit our Shop
+        <!-- Sellauth shop -->
+        <a class="btn" href="https://devildanny.mysellauth.com/" target="_blank" rel="noopener" role="listitem">
+          Sellauth
         </a>
       </div>
 
       <div class="foot">
-        <span>© <span id="year"></span> vocaltools</span>
+        <span>© <span id="year"></span> ItzDevilDanny</span>
       </div>
     </section>
   </main>
 
   <script>
-    // simple ambient starfield (optional—remove if not needed)
+    // Ambient starfield background
     const c = document.getElementById('bg'), x = c.getContext('2d');
     let dpr, W, H, S=[]; const N=240;
     function R(a,b){return Math.random()*(b-a)+a}
