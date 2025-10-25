@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg:#000;               /* pure black background */
+      --bg:#000;
       --glass:rgba(20,20,22,.55);
       --text:#f5f7fa;
       --muted:#b8c0d0;
@@ -23,13 +23,11 @@
       margin:0; font-family:Poppins,system-ui,sans-serif; color:var(--text);
       background:var(--bg);
       overflow:hidden;
-      cursor:none; /* hide default cursor */
+      cursor:none;
     }
 
-    /* CANVAS particle field */
     canvas#bg{position:fixed; inset:0; width:100%; height:100%; display:block; z-index:-1;}
 
-    /* Layout */
     .wrap{display:grid; place-items:center; height:100%; padding:32px}
     .card{
       width:min(680px, 92vw); padding:28px 26px 22px;
@@ -44,17 +42,18 @@
       padding:14px 16px; border-radius:16px; text-decoration:none; color:var(--text);
       background:linear-gradient(180deg, #141418, #0a0a0d); border:1px solid var(--border);
       transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease;
+      position:relative; z-index:1;
     }
     .btn:hover{transform:translateY(-2px); box-shadow:0 12px 28px rgba(0,0,0,.65); border-color:#7c3aed55}
     .foot{display:flex; align-items:center; justify-content:space-between; margin-top:14px; font-size:12px; color:var(--muted)}
 
-    /* Custom cursor: small white dot */
     .cursor{
       position:fixed; left:0; top:0; width:10px; height:10px; border-radius:50%;
       background:#fff; pointer-events:none; z-index:9999; translate:-50% -50%;
-      box-shadow:0 0 16px #ffffff80;
+      box-shadow:0 0 16px #ffffff80; transition:transform 0.08s ease-out, width 0.1s, height 0.1s, background 0.2s;
     }
     .cursor.hide{opacity:0}
+    .cursor.link-hover{width:22px; height:22px; background:#fff8; box-shadow:0 0 30px #fff8;}
   </style>
 </head>
 <body>
@@ -77,110 +76,36 @@
   </main>
 
   <script>
-    // ===== Custom cursor (white dot) =====
+    // Custom cursor
     const cursor = document.getElementById('cursor');
-    let cx = innerWidth/2, cy = innerHeight/2; // rendered position
-    let tx = cx, ty = cy; // target position
-    const ease = 0.18; // smoothing
+    let cx = innerWidth/2, cy = innerHeight/2, tx = cx, ty = cy;
+    const ease = 0.18;
 
-    function onMove(e){
-      const p = e.touches ? e.touches[0] : e;
-      tx = p.clientX; ty = p.clientY;
-      cursor.classList.remove('hide');
-    }
-    addEventListener('mousemove', onMove, {passive:true});
-    addEventListener('touchmove', onMove, {passive:true});
+    function move(e){const p=e.touches?e.touches[0]:e;tx=p.clientX;ty=p.clientY;cursor.classList.remove('hide');}
+    addEventListener('mousemove',move,{passive:true});
+    addEventListener('touchmove',move,{passive:true});
     addEventListener('mouseleave',()=>cursor.classList.add('hide'));
 
-    function cursorLoop(){
-      cx += (tx - cx)*ease; cy += (ty - cy)*ease;
-      cursor.style.transform = `translate(${cx}px, ${cy}px)`;
-      requestAnimationFrame(cursorLoop);
-    }
-    cursorLoop();
+    function loop(){cx+=(tx-cx)*ease;cy+=(ty-cy)*ease;cursor.style.transform=`translate(${cx}px,${cy}px)`;requestAnimationFrame(loop)}
+    loop();
 
-    // ===== Interactive particle background =====
-    const c = document.getElementById('bg');
-    const ctx = c.getContext('2d');
-    let w, h, dpr, P = [];
-    const COUNT = 220;         // number of dots
-    const BASE_SPEED = 0.35;   // drift speed
-    const FORCE = 1100;        // mouse attraction strength (higher = stronger)
-    const MAX_DIST = 160;      // max influence distance
+    // cursor grows when hovering links
+    const links=document.querySelectorAll('a, button');
+    links.forEach(el=>{
+      el.addEventListener('mouseenter',()=>cursor.classList.add('link-hover'));
+      el.addEventListener('mouseleave',()=>cursor.classList.remove('link-hover'));
+    });
 
+    // particle background with mouse motion influence
+    const c=document.getElementById('bg'),ctx=c.getContext('2d');
+    let w,h,dpr,P=[];const COUNT=240,FORCE=800,MAX_DIST=180;
     function rand(a,b){return Math.random()*(b-a)+a}
-
-    function resize(){
-      dpr = Math.min(devicePixelRatio||1,2);
-      w = c.width = Math.floor(innerWidth * dpr);
-      h = c.height = Math.floor(innerHeight * dpr);
-      c.style.width = innerWidth + 'px';
-      c.style.height = innerHeight + 'px';
-      ctx.setTransform(1,0,0,1,0,0);
-      ctx.scale(dpr, dpr);
-    }
-
-    function makeDot(){
-      return {
-        x: rand(0, innerWidth),
-        y: rand(0, innerHeight),
-        vx: rand(-BASE_SPEED, BASE_SPEED),
-        vy: rand(-BASE_SPEED, BASE_SPEED),
-        r: rand(0.6, 1.8)
-      }
-    }
-
-    function init(){
-      resize();
-      P = Array.from({length: COUNT}, makeDot);
-      requestAnimationFrame(loop);
-    }
-
-    function loop(){
-      ctx.clearRect(0,0,innerWidth,innerHeight);
-      // subtle vignette to soften edges
-      const g = ctx.createRadialGradient(innerWidth/2, innerHeight/2, 0, innerWidth/2, innerHeight/2, Math.max(innerWidth, innerHeight));
-      g.addColorStop(0,'#000');
-      g.addColorStop(1,'#050505');
-      ctx.fillStyle = g; ctx.fillRect(0,0,innerWidth,innerHeight);
-
-      // mouse parallax force
-      for(const p of P){
-        const dx = tx - p.x, dy = ty - p.y;
-        const d2 = dx*dx + dy*dy;
-        if(d2 < MAX_DIST*MAX_DIST){
-          const f = FORCE / (d2 + 80); // avoid infinity near zero
-          p.vx += dx * f * 0.016;
-          p.vy += dy * f * 0.016;
-        }
-        // friction & speed clamp
-        p.vx *= 0.96; p.vy *= 0.96;
-        const sp = Math.hypot(p.vx, p.vy);
-        const cap = 2.2;
-        if(sp > cap){ p.vx = p.vx/sp*cap; p.vy = p.vy/sp*cap; }
-
-        p.x += p.vx; p.y += p.vy;
-        // wrap around edges
-        if(p.x < -5) p.x = innerWidth+5; if(p.x > innerWidth+5) p.x = -5;
-        if(p.y < -5) p.y = innerHeight+5; if(p.y > innerHeight+5) p.y = -5;
-      }
-
-      // draw dots
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = '#e8f1ff';
-      for(const p of P){
-        ctx.globalAlpha = 0.25 + (Math.abs(p.vx)+Math.abs(p.vy))*0.08;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
-      }
-      ctx.globalCompositeOperation = 'source-over';
-      requestAnimationFrame(loop);
-    }
-
-    addEventListener('resize', resize);
-    init();
-
-    // dynamic year
-    document.getElementById('year').textContent = new Date().getFullYear();
+    function resize(){dpr=Math.min(devicePixelRatio||1,2);w=c.width=Math.floor(innerWidth*dpr);h=c.height=Math.floor(innerHeight*dpr);c.style.width=innerWidth+'px';c.style.height=innerHeight+'px';ctx.setTransform(1,0,0,1,0,0);ctx.scale(dpr,dpr)}
+    function make(){return{x:rand(0,innerWidth),y:rand(0,innerHeight),vx:rand(-.4,.4),vy:rand(-.4,.4),r:rand(.5,1.5)}}
+    function init(){resize();P=Array.from({length:COUNT},make);requestAnimationFrame(draw)}
+    function draw(){ctx.clearRect(0,0,innerWidth,innerHeight);for(const p of P){const dx=tx-p.x,dy=ty-p.y,d2=dx*dx+dy*dy;if(d2<MAX_DIST*MAX_DIST){const f=FORCE/(d2+80);p.vx+=dx*f*0.016;p.vy+=dy*f*0.016;}p.vx*=0.96;p.vy*=0.96;p.x+=p.vx;p.y+=p.vy;if(p.x<-5)p.x=innerWidth+5;if(p.x>innerWidth+5)p.x=-5;if(p.y<-5)p.y=innerHeight+5;if(p.y>innerHeight+5)p.y=-5;ctx.fillStyle='#fff';ctx.globalAlpha=0.3+Math.abs(p.vx+p.vy)*0.1;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;requestAnimationFrame(draw)}
+    addEventListener('resize',resize);init();
+    document.getElementById('year').textContent=new Date().getFullYear();
   </script>
 </body>
 </html>
